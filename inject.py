@@ -110,11 +110,22 @@ def main():
     cartdat_list = json.loads(cartdat_match.group(1))
     print(f"Original _cartdat length: {len(cartdat_list)}")
     
-    # Keep the ROM data before 0x4300, and replace from 0x4300 with compressed code
-    new_cartdat = cartdat_list[:0x4300] + list(compressed)
+    # Create a new cartdat array of the original size (usually 32768)
+    new_cartdat = list(cartdat_list)
+    if len(new_cartdat) < 32768:
+        new_cartdat += [0] * (32768 - len(new_cartdat))
     
-    # Pad to 32768 if it's somehow shorter? Actually, _cartdat contains code at the end
-    # index.js has total length of cartdat as 0x4300 + compressed_len
+    # Overwrite code section starting at 0x4300 with compressed code
+    for i, b in enumerate(compressed):
+        new_cartdat[0x4300 + i] = b
+        
+    # Zero out the rest of the code section, leaving the very last byte (version byte) intact
+    for i in range(0x4300 + len(compressed), len(new_cartdat) - 1):
+        new_cartdat[i] = 0
+        
+    # Set the version byte at the end of the cartridge to 8 (PICO-8 format version)
+    new_cartdat[32767] = 8
+        
     print(f"New _cartdat length: {len(new_cartdat)}")
     
     # Format new _cartdat string
